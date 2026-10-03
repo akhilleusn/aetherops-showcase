@@ -1,94 +1,44 @@
 # AetherOps
 
-> AI-powered backend incident investigation platform — evidence-first analysis, honest unknowns, safe runbooks.
+**AI-assisted incident investigation for backend teams.** AetherOps groups related log failures into one incident, ties every claim in its analysis to a specific log line, and lists what it *can't* determine instead of guessing.
 
-![Tests](https://img.shields.io/badge/tests-247%20passing-brightgreen)
-![Java](https://img.shields.io/badge/Java-17-orange)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4-green)
-![License](https://img.shields.io/badge/license-MIT-blue)
+**Live:** [aetheropsai.com](https://aetheropsai.com)
 
-## What is AetherOps?
+![AetherOps incident detail: CRITICAL payment-svc incident with evidence-cited AI analysis](images/payment-svc-critical.jpg)
 
-AetherOps turns backend failures into evidence-backed AI investigations. Unlike tools that give confident-sounding answers without proof, AetherOps only says what the evidence supports — and explicitly tells you what it cannot determine.
+The screenshot above is the running app, not a mockup. Seeded log events went through the real ingestion, grouping and analysis pipeline.
 
-**Every AI claim references a specific log evidence ID. No hallucinations passed through silently.**
+## What it does
 
-## Features
+1. **Ingest.** Services send structured log events to `POST /api/v1/events`. Secrets and tokens are masked before anything is stored.
+2. **Group.** WARN, ERROR and FATAL events are fingerprinted by tenant, service, level and normalized message. Repeats join the same open incident instead of creating a new one, and severity escalates as the event count grows.
+3. **Analyze.** The evidence is passed to an analysis engine that returns a structured result: summary, likely cause, confidence, unknowns and recommended next checks. The engine is pluggable, with a deterministic mock provider by default and Claude when an API key is set.
+4. **Cite.** Every claim must reference an evidence ID. The returned summary and likely cause are checked against the cited log evidence before they are shown.
+5. **Be honest about gaps.** Missing metrics, traces or deployment history are listed as unknowns, and suggested next checks are read-only diagnostics.
 
-- **Evidence-cited AI analysis** — every claim references a log evidence ID
-- **Honest unknowns** — confidence capped at 65% for log-only analysis
-- **Safe runbooks** — read-only steps only, no destructive suggestions
-- **Postmortem drafts** — generated automatically from evidence
-- **JWT authentication** — BCrypt passwords, SHA-256 API key hashing
-- **2FA / TOTP** — QR setup, backup codes, AES-256-GCM encrypted secrets
-- **Google OAuth login** — account linking and 2FA support
-- **Account lockout** — 5 failed attempts, 15 minute auto-unlock
-- **Password reset** — via email using Resend API
-- **Rate limiting** — 100 req/min per API key with response headers
-- **Slack alerting** — HIGH and CRITICAL incidents notify your team instantly
-- **Multi-tenant isolation** — every query scoped, cross-tenant access impossible
-- **Secret masking** — JWT tokens, passwords, API keys redacted before storage and AI
-- **Audit logs** — every AI operation logged permanently
-- **CORS + Security headers** — production-ready security configuration
+![Second incident: HIGH api-gateway, same pipeline](images/api-gateway-high.jpg)
 
-## Tech Stack
+## Engineering highlights
 
-| Layer | Technology |
-|-------|-----------|
-| Backend | Java 17, Spring Boot 3.4 |
-| Database | PostgreSQL 16, Flyway migrations |
-| Security | Spring Security, JJWT, BCrypt |
-| AI | Anthropic Claude API |
-| Infrastructure | Docker, Docker Compose |
-| Testing | JUnit 5, MockMvc, H2 |
-| Deployment | Railway |
+- **Multi-tenant isolation in the database.** Every tenant-scoped table uses Postgres row-level security, enforced against the app's own database role, not only in application code.
+- **Real-database tests.** 1,137 automated tests pass, and tenant isolation is tested against a real Postgres instance with RLS enforced rather than mocked.
+- **Security basics done properly.** API keys are shown once and stored as SHA-256 hashes. Ingestion is rate-limited per key. TOTP 2FA uses constant-time comparison, and OAuth tokens are encrypted at rest with AES-256.
+- **Account security.** Google OAuth login with account linking, account lockout after 5 failed attempts with a 15-minute auto-unlock, and an audit log of every AI operation.
+- **Runbooks and postmortems.** Read-only runbook steps (no destructive suggestions) and postmortem drafts generated from the incident's evidence.
+- **Incident lifecycle beyond analysis.** War rooms open automatically for CRITICAL incidents and are linked to Slack. On-call rotations are calendar-aware, with PTO-aware availability and masked phone numbers. Jira and ServiceNow tickets can be created from an incident, and SSO/SAML is supported per tenant.
+- **Usage limits per plan.** Monthly caps on analyses, runbook generations and postmortem drafts are enforced by the system.
 
-## Quick Start
+## Stack
 
-```bash
-git clone https://github.com/akhilleusn/aetherops.git
-cd aetherops
-cp .env.example .env
-docker compose up -d
-```
+Java 17, Spring Boot, PostgreSQL (with RLS), Redis, Flyway migrations, JWT auth. Deployed on Google Cloud Run with Cloud SQL, built with Cloud Build. A React Native mobile client exists for the API.
 
-Visit `http://localhost:8080/landing.html`
+## Honest status
 
-## Environment Variables
+- War rooms, on-call and analytics are implemented in the backend API but don't have a web dashboard page yet. The landing page shows them as design mockups and labels them as such.
+- Access is invite-only. There is no self-serve signup, so the live site is a landing page plus screenshots rather than a public sandbox.
+- The source code is in a private repository. This repo is a showcase. I'm happy to walk through the code, architecture and design decisions in an interview.
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| JWT_SECRET | Yes | Min 32 chars |
-| ANTHROPIC_API_KEY | No | Falls back to mock AI |
-| SLACK_WEBHOOK_URL | No | Slack incident alerts |
-| RESEND_API_KEY | No | Password reset emails |
-| GOOGLE_CLIENT_ID | No | Google OAuth login |
-| TOTP_ENCRYPTION_KEY | No | 2FA secret encryption |
+## Contact
 
-## Testing
-
-```bash
-mvn test
-# 247 tests, 0 failures
-```
-
-## Security Features
-
-- JWT authentication with 24h expiry
-- BCrypt password hashing (never plain text)
-- SHA-256 API key hashing (raw keys never stored)
-- Secret masking before storage and AI processing
-- Tenant isolation on every database query
-- Rate limiting 100 req/min per API key
-- Account lockout after 5 failed attempts
-- TOTP 2FA with AES-256-GCM encrypted secrets
-- CORS configuration for Railway deployment
-- Security response headers (X-Frame-Options, X-XSS-Protection, etc.)
-
-## License
-
-MIT License — see [LICENSE](LICENSE) for details.
-
----
-
-Built with Java 17 · Spring Boot 3.4 · PostgreSQL · Docker
+Zeyt Ates, IT engineering student in Poznań, Poland, looking for Java backend roles.
+[LinkedIn](https://linkedin.com/in/zeytates) · [GitHub](https://github.com/akhilleusn)
